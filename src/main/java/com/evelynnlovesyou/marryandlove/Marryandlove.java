@@ -15,7 +15,7 @@ public class Marryandlove implements ModInitializer {
         // Initialize MarriageManager when server starts
         ServerLifecycleEvents.SERVER_STARTED.register(this::onServerStarted);
 
-        // Register placeholder provider with Placeholders API
+        // Register placeholder provider with papi
         MarriagePlaceholderProvider.register();
     }
 
