@@ -18,9 +18,6 @@ repositories {
 		url "https://maven.nucleoid.xyz/"
         name "Nucleoid"
 	}
-	maven {
-		url "https://repo.papermc.io/repository/maven-public/"
-	}
 	mavenCentral()
 }
 
@@ -44,7 +41,6 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	modImplementation include("eu.pb4:predicate-api:0.6.0+1.21.2")
 	modImplementation include("eu.pb4:placeholder-api:2.4.2+1.21")
 }
 
