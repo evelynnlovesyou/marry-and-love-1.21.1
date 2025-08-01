@@ -28,7 +28,7 @@ public class MarriagePlaceholderProvider {
 
         UUID spouseId = MarriageManager.getSpouse(player.getUuid());
         if (spouseId == null) {
-            return PlaceholderResult.value(Text.literal("Not married").formatted(Formatting.GRAY));
+            return PlaceholderResult.value(Text.literal("").formatted(Formatting.GRAY));
         }
 
         ServerPlayerEntity spouse = null;
@@ -38,7 +38,10 @@ public class MarriagePlaceholderProvider {
 
         String spouseName = (spouse != null) ? spouse.getName().getString() : "Offline";
 
-        Text displayText = Text.literal("[♥]").styled(style ->
+        Text displayText = Text.literal("[")
+                .formatted(Formatting.GRAY)
+                .append(Text.literal("♥").formatted(Formatting.RED))
+                .append(Text.literal("]").formatted(Formatting.GRAY)).styled(style ->
                 style.withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
                         Text.literal("♥ Married to: " + spouseName + " ♥").formatted(Formatting.GOLD)
