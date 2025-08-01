@@ -1,4 +1,4 @@
-package evelynn.lovesyou;
+package com.evelynnlovesyou.marryandlove;
 
 import net.fabricmc.api.ClientModInitializer;
 

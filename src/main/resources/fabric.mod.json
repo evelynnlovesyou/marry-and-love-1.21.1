@@ -16,10 +16,10 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"evelynn.lovesyou.Marryandlove"
+			"com.evelynnlovesyou.marryandlove.Marryandlove"
 		],
 		"client": [
-			"evelynn.lovesyou.MarryandloveClient"
+			"com.evelynnlovesyou.marryandlove.MarryandloveClient"
 		]
 	},
 	"mixins": [

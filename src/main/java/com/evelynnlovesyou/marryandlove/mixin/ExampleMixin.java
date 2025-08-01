@@ -1,4 +1,4 @@
-package evelynn.lovesyou.mixin;
+package com.evelynnlovesyou.marryandlove.mixin;
 
 import net.minecraft.server.MinecraftServer;
 import org.spongepowered.asm.mixin.Mixin;
