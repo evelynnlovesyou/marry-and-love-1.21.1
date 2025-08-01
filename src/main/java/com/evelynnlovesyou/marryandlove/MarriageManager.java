@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 
 import java.io.File;
@@ -31,7 +32,13 @@ public class MarriageManager {
         Path runDir = server.getRunDirectory();
         Path configDir = runDir.resolve("config").resolve("marryandlove");
         File folder = configDir.toFile();
-        if (!folder.exists()) folder.mkdirs();
+        if (!folder.exists()) {
+            boolean created = folder.mkdirs();
+            if (!created) {
+                System.err.println("Failed to create config directory: " + folder.getAbsolutePath());
+                // Optionally: throw an exception or fallback
+            }
+        }
         dataFile = new File(folder, "marriages.json");
         load();
     }
@@ -141,7 +148,12 @@ public class MarriageManager {
         UUID spouseId = marriages.get(playerId);
         if (spouseId == null) return false;
 
-        ServerPlayerEntity spousePlayer = player.getServer().getPlayerManager().getPlayer(spouseId);
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            player.sendMessage(Text.literal("Server is not available right now."), false);
+            return false;
+        }
+        ServerPlayerEntity spousePlayer = server.getPlayerManager().getPlayer(spouseId);
         if (spousePlayer == null) return false;
 
         Vec3d spousePos = spousePlayer.getPos();
@@ -160,5 +172,11 @@ public class MarriageManager {
 
     public static UUID getSpouse(UUID player) {
         return marriages.get(player);
+    }
+
+    public static UUID getPendingRequester(UUID target) {
+        MarriageRequest req = pendingRequests.get(target);
+        if (req == null || req.isExpired()) return null;
+        return req.requester;
     }
 }

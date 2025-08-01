@@ -16,6 +16,10 @@ public class MarryCommand {
             .then(CommandManager.argument("target", EntityArgumentType.player())
                 .executes(ctx -> {
                     ServerPlayerEntity source = ctx.getSource().getPlayer();
+                    if (source == null) {
+                        ctx.getSource().sendFeedback(() -> Text.literal("This command can only be run by a player."), false);
+                        return 1;
+                    }
                     ServerPlayerEntity target = EntityArgumentType.getPlayer(ctx, "target");
 
                     if (source.getUuid().equals(target.getUuid())) {
@@ -24,10 +28,9 @@ public class MarryCommand {
                     }
 
                     if (MarriageManager.isMarried(source.getUuid())) {
-                        source.sendMessage(Text.literal("You are already married."), false);
+                        source.sendMessage(Text.literal("You are already married, divorce first!"), false);
                         return 1;
                     }
-
                     if (MarriageManager.hasPendingRequest(target.getUuid()) &&
                         MarriageManager.getSpouse(target.getUuid()) == null) { 
                         // Just in case, but your MarriageManager does expiration
@@ -35,6 +38,12 @@ public class MarryCommand {
                         if (accepted) {
                             source.sendMessage(Text.literal("You are now married to " + target.getName().getString() + "!"), false);
                             target.sendMessage(Text.literal("You are now married to " + source.getName().getString() + "!"), false);
+
+                            // Broadcast to all players
+                            String broadcast = source.getName().getString() + " and " + target.getName().getString() + " are now married!";
+                            for (ServerPlayerEntity player : ctx.getSource().getServer().getPlayerManager().getPlayerList()) {
+                                player.sendMessage(Text.literal(broadcast), false);
+                            }
                         } else {
                             source.sendMessage(Text.literal("Failed to accept the marriage request."), false);
                         }
@@ -53,6 +62,10 @@ public class MarryCommand {
             .then(CommandManager.literal("accept")
                 .executes(ctx -> {
                     ServerPlayerEntity accepter = ctx.getSource().getPlayer();
+                    if (accepter == null) {
+                        ctx.getSource().sendFeedback(() -> Text.literal("This command can only be run by a player."), false);
+                        return 1;
+                    }
                     boolean accepted = MarriageManager.acceptRequest(accepter.getUuid());
 
                     if (!accepted) {
@@ -77,39 +90,78 @@ public class MarryCommand {
             .then(CommandManager.literal("deny")
                 .executes(ctx -> {
                     ServerPlayerEntity denier = ctx.getSource().getPlayer();
-
+                    if (denier == null) {
+                        ctx.getSource().sendFeedback(() -> Text.literal("This command can only be run by a player."), false);
+                        return 1;
+                    }
                     if (!MarriageManager.hasPendingRequest(denier.getUuid())) {
                         denier.sendMessage(Text.literal("No proposal to deny."), false);
                         return 1;
                     }
-
-                    MarriageManager.denyRequest(denier.getUuid());
-
-                    denier.sendMessage(Text.literal("You denied the proposal."), false);
+                    // Get proposer UUID before denying
+                    UUID proposerId = MarriageManager.getPendingRequester(denier.getUuid());
+                    if (proposerId != null) {
+                        ServerPlayerEntity proposer = ctx.getSource().getServer().getPlayerManager().getPlayer(proposerId);
+                        if (proposer != null) {
+                            proposer.sendMessage(Text.literal(denier.getName().getString() + " denied your proposal."), false);
+                            MarriageManager.denyRequest(denier.getUuid());
+                            denier.sendMessage(Text.literal("You denied the proposal sent to you by " + proposer.getName().getString()), false);
+                        } else {
+                            MarriageManager.denyRequest(denier.getUuid());
+                            denier.sendMessage(Text.literal("You denied the proposal sent to you."), false);
+                        }
+                    } else {
+                        MarriageManager.denyRequest(denier.getUuid());
+                        denier.sendMessage(Text.literal("You denied the proposal sent to you."), false);
+                    }
                     return 1;
                 }))
             .then(CommandManager.literal("tp")
                 .executes(ctx -> {
                     ServerPlayerEntity player = ctx.getSource().getPlayer();
-
+                    if (player == null) {
+                        ctx.getSource().sendFeedback(() -> Text.literal("This command can only be run by a player."), false);
+                        return 1;
+                    }
                     boolean teleported = MarriageManager.teleportToSpouse(player);
                     if (!teleported) {
                         player.sendMessage(Text.literal("Cannot teleport to your spouse right now. You might not be married, your spouse may be offline, or cooldown active."), false);
                         return 1;
                     }
-
                     player.sendMessage(Text.literal("Teleported to your spouse."), false);
+
+                    // Notify the spouse
+                    UUID spouseId = MarriageManager.getSpouse(player.getUuid());
+                    if (spouseId != null) {
+                        ServerPlayerEntity spouse = ctx.getSource().getServer().getPlayerManager().getPlayer(spouseId);
+                        if (spouse != null && !spouse.getUuid().equals(player.getUuid())) {
+                            spouse.sendMessage(Text.literal(player.getName().getString() + " teleported to you."), false);
+                        }
+                    }
                     return 1;
                 }))
             .then(CommandManager.literal("divorce")
                 .executes(ctx -> {
                     ServerPlayerEntity player = ctx.getSource().getPlayer();
+                    if (player == null) {
+                        ctx.getSource().sendFeedback(() -> Text.literal("This command can only be run by a player."), false);
+                        return 1;
+                    }
                     if (!MarriageManager.isMarried(player.getUuid())) {
                         player.sendMessage(Text.literal("You are not married."), false);
                         return 1;
                     }
+                    UUID spouseId = MarriageManager.getSpouse(player.getUuid());
                     MarriageManager.divorce(player.getUuid());
                     player.sendMessage(Text.literal("You are now divorced."), false);
+
+                    // Notify the spouse if online
+                    if (spouseId != null) {
+                        ServerPlayerEntity spouse = ctx.getSource().getServer().getPlayerManager().getPlayer(spouseId);
+                        if (spouse != null && !spouse.getUuid().equals(player.getUuid())) {
+                            spouse.sendMessage(Text.literal(player.getName().getString() + " has divorced you."), false);
+                        }
+                    }
                     return 1;
                 }))
         );
