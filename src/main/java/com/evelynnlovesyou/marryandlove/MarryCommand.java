@@ -53,7 +53,22 @@ public class MarryCommand {
                                     // Yay! Marriage successful :)
                                     source.sendMessage(Text.literal("You are now married to " + target.getName().getString() + "!"), false);
                                     target.sendMessage(Text.literal("You are now married to " + source.getName().getString() + "!"), false);
-
+                                    // Play custom marriage sound! How cute! :)
+                                    ServerWorld world = (ServerWorld) source.getWorld();
+                                    world.playSound(
+                                            source,
+                                            source.getX(), source.getY(), source.getZ(),
+                                            MALSoundEvent.MARRY,
+                                            SoundCategory.PLAYERS,
+                                            1.0f, 1.0f
+                                    );
+                                    world.playSound(
+                                            target,
+                                            target.getX(), target.getY(), target.getZ(),
+                                            MALSoundEvent.MARRY,
+                                            SoundCategory.PLAYERS,
+                                            1.0f, 1.0f
+                                    );
                                     // Broadcast to all players about the happy couple!
                                     String broadcast = source.getName().getString() + " and " + target.getName().getString() + " are now married!";
                                     for (ServerPlayerEntity player : ctx.getSource().getServer().getPlayerManager().getPlayerList()) {
@@ -109,7 +124,6 @@ public class MarryCommand {
                             if (proposer != null) {
                                 proposer.sendMessage(Text.literal(accepter.getName().getString() + " accepted your proposal!"), false);
                             }
-
                             // Tell accepter they’re now married — yay love <3
                             accepter.sendMessage(Text.literal("You are now married to " + (proposer != null ? proposer.getName().getString() : "your spouse") + "!"), false);
 
@@ -245,7 +259,7 @@ public class MarryCommand {
 
                                     ServerWorld world = (ServerWorld) player.getWorld();
 
-                                    // Spawn heart particles at both players
+                                    // Spawn heart particles at both players <33
                                     world.spawnParticles(ParticleTypes.HEART,
                                             player.getX(), player.getY() + 1.0, player.getZ(),
                                             5, 0.5, 0.5, 0.5, 0.01);
@@ -253,7 +267,7 @@ public class MarryCommand {
                                             spouse.getX(), spouse.getY() + 1.0, spouse.getZ(),
                                             5, 0.5, 0.5, 0.5, 0.01);
 
-                                    // 🔊 Play custom kiss sound
+                                    // Play custom kiss sound, mwah!
                                     world.playSound(
                                             player,
                                             player.getX(), player.getY(), player.getZ(),
