@@ -14,7 +14,7 @@ public class MALSoundEvent {
     public static final SoundEvent MARRY = SoundEvent.of(MARRY_ID);
 
     public static void registerSounds() {
-        Registry.register(Registries.SOUND_EVENT, KISS_ID, KISS);
-        Registry.register(Registries.SOUND_EVENT, MARRY_ID, MARRY);
+        // Registry.register(Registries.SOUND_EVENT, KISS_ID, KISS);
+        // Registry.register(Registries.SOUND_EVENT, MARRY_ID, MARRY);
     }
 }

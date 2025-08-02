@@ -9,6 +9,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 
 
 
@@ -58,14 +59,16 @@ public class MarryCommand {
                                     world.playSound(
                                             source,
                                             source.getX(), source.getY(), source.getZ(),
-                                            MALSoundEvent.MARRY,
+                                            SoundEvents.ENTITY_PLAYER_LEVELUP,
+                                            // MALSoundEvent.MARRY,
                                             SoundCategory.PLAYERS,
                                             1.0f, 1.0f
                                     );
                                     world.playSound(
                                             target,
                                             target.getX(), target.getY(), target.getZ(),
-                                            MALSoundEvent.MARRY,
+                                            SoundEvents.ENTITY_PLAYER_LEVELUP,
+                                            // MALSoundEvent.MARRY,
                                             SoundCategory.PLAYERS,
                                             1.0f, 1.0f
                                     );
@@ -243,14 +246,13 @@ public class MarryCommand {
                                 player.sendMessage(Text.literal("You are not married, find a partner first!"), false);
                                 return 1;
                             }
-
                             UUID spouseId = MarriageManager.getSpouse(player.getUuid());
                             if (spouseId != null) {
                                 ServerPlayerEntity spouse = ctx.getSource().getServer().getPlayerManager().getPlayer(spouseId);
                                 if (spouse != null && !spouse.getUuid().equals(player.getUuid())) {
                                     double distance = player.squaredDistanceTo(spouse);
                                     if (distance > 9) { // 3 blocks squared = 9
-                                        player.sendMessage(Text.literal("You must be within 3 blocks of your spouse to kiss them."), false);
+                                        player.sendMessage(Text.literal("You must be within 3 blocks of your spouse to kiss them!"), false);
                                         return 1;
                                     }
 
@@ -271,20 +273,22 @@ public class MarryCommand {
                                     world.playSound(
                                             player,
                                             player.getX(), player.getY(), player.getZ(),
-                                            MALSoundEvent.KISS,
+                                            SoundEvents.ENTITY_VILLAGER_YES,
+                                            // MALSoundEvent.KISS,
                                             SoundCategory.PLAYERS,
                                             1.0f, 1.0f
                                     );
                                     world.playSound(
                                             spouse,
                                             spouse.getX(), spouse.getY(), spouse.getZ(),
-                                            MALSoundEvent.KISS,
+                                            SoundEvents.ENTITY_VILLAGER_YES,
+                                            // MALSoundEvent.KISS,
                                             SoundCategory.PLAYERS,
                                             1.0f, 1.0f
                                     );
                                 }
                             }
-
+                            player.sendMessage(Text.literal("You cannot kiss your partner whilst they're offline!"), false);
                             return 1;
                         }))
 
