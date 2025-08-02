@@ -17,6 +17,7 @@ public class Marryandlove implements ModInitializer {
 
         // Register placeholder provider with papi
         MarriagePlaceholderProvider.register();
+        MALSoundEvent.registerSounds();
     }
 
     private void onServerStarted(MinecraftServer server) {

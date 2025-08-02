@@ -1,0 +1,20 @@
+{
+  "kiss": {
+    "sounds": [
+      {
+        "name": "marryandlove:kiss",
+        "volume": 1.0,
+        "pitch": 1.0
+      }
+    ]
+  },
+  "marry": {
+    "sounds": [
+      {
+        "name": "marryandlove:marry",
+        "volume": 1.0,
+        "pitch": 1.0
+      }
+    ]
+  }
+}

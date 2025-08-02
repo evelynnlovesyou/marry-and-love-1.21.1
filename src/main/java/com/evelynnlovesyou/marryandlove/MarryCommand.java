@@ -5,7 +5,12 @@ import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
+import net.minecraft.sound.SoundCategory;
+
+
 
 import java.util.UUID;
 
@@ -212,6 +217,63 @@ public class MarryCommand {
 
                             return 1;
                         }))
+                .then(CommandManager.literal("kiss")
+                        .executes(ctx -> {
+                            ServerPlayerEntity player = ctx.getSource().getPlayer();
+                            if (player == null) {
+                                ctx.getSource().sendFeedback(() -> Text.literal("This command can only be run by a player."), false);
+                                return 1;
+                            }
+
+                            if (!MarriageManager.isMarried(player.getUuid())) {
+                                player.sendMessage(Text.literal("You are not married, find a partner first!"), false);
+                                return 1;
+                            }
+
+                            UUID spouseId = MarriageManager.getSpouse(player.getUuid());
+                            if (spouseId != null) {
+                                ServerPlayerEntity spouse = ctx.getSource().getServer().getPlayerManager().getPlayer(spouseId);
+                                if (spouse != null && !spouse.getUuid().equals(player.getUuid())) {
+                                    double distance = player.squaredDistanceTo(spouse);
+                                    if (distance > 9) { // 3 blocks squared = 9
+                                        player.sendMessage(Text.literal("You must be within 3 blocks of your spouse to kiss them."), false);
+                                        return 1;
+                                    }
+
+                                    player.sendMessage(Text.literal("You gave " + spouse.getName().getString() + " a kiss!"), false);
+                                    spouse.sendMessage(Text.literal(player.getName().getString() + " gave you a kiss!"), false);
+
+                                    ServerWorld world = (ServerWorld) player.getWorld();
+
+                                    // Spawn heart particles at both players
+                                    world.spawnParticles(ParticleTypes.HEART,
+                                            player.getX(), player.getY() + 1.0, player.getZ(),
+                                            5, 0.5, 0.5, 0.5, 0.01);
+                                    world.spawnParticles(ParticleTypes.HEART,
+                                            spouse.getX(), spouse.getY() + 1.0, spouse.getZ(),
+                                            5, 0.5, 0.5, 0.5, 0.01);
+
+                                    // 🔊 Play custom kiss sound
+                                    world.playSound(
+                                            player,
+                                            player.getX(), player.getY(), player.getZ(),
+                                            MALSoundEvent.KISS,
+                                            SoundCategory.PLAYERS,
+                                            1.0f, 1.0f
+                                    );
+                                    world.playSound(
+                                            spouse,
+                                            spouse.getX(), spouse.getY(), spouse.getZ(),
+                                            MALSoundEvent.KISS,
+                                            SoundCategory.PLAYERS,
+                                            1.0f, 1.0f
+                                    );
+                                }
+                            }
+
+                            return 1;
+                        }))
+
         );
     }
 }
