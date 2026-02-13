@@ -3,7 +3,7 @@
 	"id": "marry-and-love",
 	"version": "${version}",
 	"name": "marry and love",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "A Serverside Minecraft mod that adds marriage and similar silly mechanics to the game.",
 	"authors": [
 		"Me!"
 	],
