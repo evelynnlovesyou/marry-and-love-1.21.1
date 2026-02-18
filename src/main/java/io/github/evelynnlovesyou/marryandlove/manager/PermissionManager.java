@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 public class PermissionManager {
 	public static final String MARRY_COMMAND_PERMISSION = (MarryAndLove.MOD_ID+".command.marry");
     public static final String DIVORCE_COMMAND_PERMISSION = (MarryAndLove.MOD_ID+".command.divorce");
+    public static final String RELOAD_COMMAND_PERMISSION = (MarryAndLove.MOD_ID+".command.reload");
     private static final Logger LOGGER = LoggerFactory.getLogger(MarryAndLove.MOD_ID);
     private static volatile LuckPerms luckPermsApi;
     private static volatile boolean luckPermsMissing = false;
@@ -21,6 +22,14 @@ public class PermissionManager {
 	public static boolean canUseMarryCommand(ServerPlayer player) {
 		return hasPermission(player, MARRY_COMMAND_PERMISSION);
 	}
+
+    public static boolean canUseDivorceCommand(ServerPlayer player) {
+        return hasPermission(player, DIVORCE_COMMAND_PERMISSION);
+    }
+
+    public static boolean canUseReloadCommand(ServerPlayer player) {
+        return hasPermission(player, RELOAD_COMMAND_PERMISSION);
+    }
 
     public static void init() {
         initLuckPerms();
@@ -47,7 +56,7 @@ public class PermissionManager {
             }
         }
     }
-	public static boolean hasPermission(ServerPlayer player, String permission) {
+	private static boolean hasPermission(ServerPlayer player, String permission) {
         initLuckPerms();
         if (luckPermsApi != null) {
             try {

@@ -25,8 +25,8 @@ public class MarryCommand {
         dispatcher.register(
             Commands.literal("marry") // /marry <player>
                 .requires(source -> {
-                    if (!(source.getEntity() instanceof ServerPlayer player)) {
-                        return false;
+                     if (!(source.getEntity() instanceof ServerPlayer player)) {
+                            return source.hasPermission(4);
                     }
                     return PermissionManager.canUseMarryCommand(player);
             })
@@ -73,11 +73,11 @@ public class MarryCommand {
                         String playerName = player.getName().getString();
 
                         context.getSource().sendSuccess(
-                            () -> Component.literal(String.format(LangReader.MARRY_PROPOSAL_SENT, target.getName().getString())),
+                            () -> Component.literal(formatPlayerMessage(LangReader.MARRY_PROPOSAL_SENT, target.getName().getString())),
                             false
                         );
                         target.sendSystemMessage(
-                            Component.literal(String.format(LangReader.MARRY_PROPOSAL_RECEIVED, playerName))
+                            Component.literal(formatPlayerMessage(LangReader.MARRY_PROPOSAL_RECEIVED, playerName))
                         );
                         return 1;
                     })
@@ -123,11 +123,38 @@ public class MarryCommand {
                         String proposerName = proposer.getName().getString();
 
                         context.getSource().sendSuccess(
-                            () -> Component.literal(String.format(LangReader.MARRY_SUCCESS_SENDER, proposerName)),
+                            () -> Component.literal(formatPlayerMessage(LangReader.MARRY_SUCCESS_SENDER, proposerName)),
                             false
                         );
                         proposer.sendSystemMessage(
-                            Component.literal(String.format(LangReader.MARRY_SUCCESS_TARGET, accepterName))
+                            Component.literal(formatPlayerMessage(LangReader.MARRY_SUCCESS_TARGET, accepterName))
+                        );
+                        return 1;
+                    })
+                )
+                .then(Commands.literal("deny")
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayerOrException();
+                        if (!PermissionManager.canUseMarryCommand(player)) {
+                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_NO_PERMISSION));
+                            return 0;
+                        }
+                        UUID proposerUuid = popMostRecentProposal(player.getUUID());
+                        if (proposerUuid == null) {
+                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_NO_PENDING_PROPOSAL));
+                            return 0;
+                        }
+                        ServerPlayer proposer = player.server.getPlayerList().getPlayer(proposerUuid);
+                        if (proposer == null) {
+                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_PROPOSER_OFFLINE));
+                            return 0;
+                        }
+                        context.getSource().sendSuccess(
+                            () -> Component.literal(formatPlayerMessage(LangReader.MARRY_DENY_SUCCESS, proposer.getName().getString())),
+                            false
+                        );
+                        proposer.sendSystemMessage(
+                            Component.literal(formatPlayerMessage(LangReader.MARRY_DENY_TARGET, player.getName().getString()))
                         );
                         return 1;
                     })
@@ -145,6 +172,10 @@ public class MarryCommand {
         // prevent duplicate entries from same proposer, keep most recent on top
         proposals.remove(proposer);
         proposals.push(proposer);
+    }
+
+    private static String formatPlayerMessage(String template, String playerName) {
+        return template.replace("%player%", playerName);
     }
 
     private static UUID popMostRecentProposal(UUID target) {

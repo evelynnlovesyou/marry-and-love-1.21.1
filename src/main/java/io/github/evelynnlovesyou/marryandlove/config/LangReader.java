@@ -28,8 +28,10 @@ public class LangReader {
 	public static String MARRY_NO_PENDING_PROPOSAL;
 	public static String MARRY_PROPOSAL_EXPIRED;
 	public static String MARRY_PROPOSER_OFFLINE;
-	public static String MARRY_TARGET_MUST_BE_SINGLE;
+	public static String MARRY_TARGET_MUST_BE_INDIVIDUAL;
 	public static String MARRY_TARGET_OFFLINE;
+	public static String MARRY_DENY_SUCCESS;
+	public static String MARRY_DENY_TARGET;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Map<String, String> DEFAULT_MESSAGES = createDefaultMessages();
@@ -108,8 +110,10 @@ public class LangReader {
 		MARRY_NO_PENDING_PROPOSAL = get("marry_no_pending_proposal");
 		MARRY_PROPOSAL_EXPIRED = get("marry_proposal_expired");
 		MARRY_PROPOSER_OFFLINE = get("marry_proposer_offline");
-		MARRY_TARGET_MUST_BE_SINGLE = get("marry_target_must_be_single");
+		MARRY_TARGET_MUST_BE_INDIVIDUAL = get("marry_target_must_be_individual");
 		MARRY_TARGET_OFFLINE = get("marry_target_offline");
+		MARRY_DENY_SUCCESS = get("marry_deny_success");
+		MARRY_DENY_TARGET = get("marry_deny_target");
 	}
 
 	private static Map<String, String> createDefaultMessages() {
@@ -128,6 +132,8 @@ public class LangReader {
 		defaults.put("marry_proposer_offline", "&cthe player who proposed is offline.");
 		defaults.put("marry_target_must_be_individual", "&cplease target exactly one player.");
 		defaults.put("marry_target_offline", "&cthat player is offline or unavailable.");
+		defaults.put ("marry_deny_success", "&ayou have denied the marriage proposal.");
+		defaults.put("marry_deny_target", "&a%player% has denied your marriage proposal.");
 		return defaults;
 	}
 
