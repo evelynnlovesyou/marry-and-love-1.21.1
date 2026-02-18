@@ -3,6 +3,7 @@ package io.github.evelynnlovesyou.marryandlove.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 
+import io.github.evelynnlovesyou.marryandlove.config.ConfigReader;
 import io.github.evelynnlovesyou.marryandlove.config.LangReader;
 import io.github.evelynnlovesyou.marryandlove.manager.MarriageManager;
 import io.github.evelynnlovesyou.marryandlove.manager.PermissionManager;
@@ -16,21 +17,22 @@ import java.util.UUID;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 public class MarryCommand {
     // target -> proposers (most recent at the front)
-    private static final Map<UUID, Deque<UUID>> PENDING_PROPOSALS = new HashMap<>();
+    private static final Map<UUID, Deque<PendingProposal>> PENDING_PROPOSALS = new HashMap<>();
 
     public static int register(CommandDispatcher<CommandSourceStack> dispatcher) { //register command
         dispatcher.register(
-            Commands.literal("marry") // /marry <player>
+            Commands.literal("marry") // /marry
                 .requires(source -> {
                      if (!(source.getEntity() instanceof ServerPlayer player)) {
                             return source.hasPermission(4);
                     }
                     return PermissionManager.canUseMarryCommand(player);
             })
-                .then(Commands.argument("player", StringArgumentType.word())
+                .then(Commands.argument("player", StringArgumentType.word()) // /marry <player>
                     .suggests((context, builder) -> {
                         return SharedSuggestionProvider.suggest(
                             context.getSource().getOnlinePlayerNames(), 
@@ -81,8 +83,8 @@ public class MarryCommand {
                         );
                         return 1;
                     })
-                ) // /marry accept
-                .then(Commands.literal("accept")
+                ) 
+                .then(Commands.literal("accept") // /marry accept
                     .executes(context -> {
                         ServerPlayer accepter = context.getSource().getPlayerOrException();
 
@@ -132,7 +134,7 @@ public class MarryCommand {
                         return 1;
                     })
                 )
-                .then(Commands.literal("deny")
+                .then(Commands.literal("deny") // /marry deny
                     .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayerOrException();
                         if (!PermissionManager.canUseMarryCommand(player)) {
@@ -159,6 +161,24 @@ public class MarryCommand {
                         return 1;
                     })
                 )
+                .then(Commands.literal("divorce") // /marry divorce
+                    .executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayerOrException();
+                        if (!PermissionManager.canUseMarryCommand(player)) {
+                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_NO_PERMISSION));
+                            return 0;
+                        }
+                        if (MarriageManager.divorce(player)) {
+                            context.getSource().sendSuccess(
+                                () -> Component.literal(LangReader.DIVORCE_SUCCESS),
+                                false
+                            );
+                        } else {
+                            context.getSource().sendFailure(Component.literal(LangReader.DIVORCE_FAILED));
+                        }
+                        return 1;
+                    })
+                )
         );
         return 0;
     }
@@ -168,10 +188,11 @@ public class MarryCommand {
     }
 
     private static void addProposal(UUID proposer, UUID target) {
-        Deque<UUID> proposals = PENDING_PROPOSALS.computeIfAbsent(target, k -> new ArrayDeque<>());
-        // prevent duplicate entries from same proposer, keep most recent on top
-        proposals.remove(proposer);
-        proposals.push(proposer);
+        pruneExpiredProposals(target);
+        Deque<PendingProposal> proposals = PENDING_PROPOSALS.computeIfAbsent(target, k -> new ArrayDeque<>());
+        // prevents duplicate entries from same proposer, keep most recent on top
+        proposals.removeIf(proposal -> proposal.proposerId().equals(proposer));
+        proposals.push(new PendingProposal(proposer, System.currentTimeMillis()));
     }
 
     private static String formatPlayerMessage(String template, String playerName) {
@@ -179,13 +200,57 @@ public class MarryCommand {
     }
 
     private static UUID popMostRecentProposal(UUID target) {
-        Deque<UUID> proposals = PENDING_PROPOSALS.get(target);
+        pruneExpiredProposals(target);
+        Deque<PendingProposal> proposals = PENDING_PROPOSALS.get(target);
         if (proposals == null || proposals.isEmpty()) return null;
 
-        UUID proposer = proposals.pop();
+        UUID proposer = proposals.pop().proposerId();
         if (proposals.isEmpty()) {
             PENDING_PROPOSALS.remove(target);
         }
         return proposer;
+    }
+
+    private static void pruneExpiredProposals(UUID target) {
+        Deque<PendingProposal> proposals = PENDING_PROPOSALS.get(target);
+        if (proposals == null || proposals.isEmpty()) {
+            return;
+        }
+
+        if (ConfigReader.PROPOSAL_TIMEOUT_SECONDS < 0) {
+            return;
+        }
+
+        long timeoutMs = Math.max(0L, (long) ConfigReader.PROPOSAL_TIMEOUT_SECONDS * 1000L);
+        if (timeoutMs == 0L) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        proposals.removeIf(proposal -> now - proposal.createdAt() > timeoutMs);
+        if (proposals.isEmpty()) {
+            PENDING_PROPOSALS.remove(target);
+        }
+    }
+
+    public static void handleDisconnect(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+
+        PENDING_PROPOSALS.remove(playerId);
+
+        Iterator<Map.Entry<UUID, Deque<PendingProposal>>> iterator = PENDING_PROPOSALS.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, Deque<PendingProposal>> entry = iterator.next();
+            Deque<PendingProposal> proposals = entry.getValue();
+            proposals.removeIf(proposal -> playerId.equals(proposal.proposerId()));
+            if (proposals.isEmpty()) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private record PendingProposal(UUID proposerId, long createdAt) {
     }
 }

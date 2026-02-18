@@ -32,6 +32,8 @@ public class LangReader {
 	public static String MARRY_TARGET_OFFLINE;
 	public static String MARRY_DENY_SUCCESS;
 	public static String MARRY_DENY_TARGET;
+	public static String DIVORCE_SUCCESS;
+	public static String DIVORCE_FAILED;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Map<String, String> DEFAULT_MESSAGES = createDefaultMessages();
@@ -114,6 +116,8 @@ public class LangReader {
 		MARRY_TARGET_OFFLINE = get("marry_target_offline");
 		MARRY_DENY_SUCCESS = get("marry_deny_success");
 		MARRY_DENY_TARGET = get("marry_deny_target");
+		DIVORCE_SUCCESS = get("divorce_success");
+		DIVORCE_FAILED = get("divorce_failed");
 	}
 
 	private static Map<String, String> createDefaultMessages() {
@@ -134,6 +138,8 @@ public class LangReader {
 		defaults.put("marry_target_offline", "&cthat player is offline or unavailable.");
 		defaults.put ("marry_deny_success", "&ayou have denied the marriage proposal.");
 		defaults.put("marry_deny_target", "&a%player% has denied your marriage proposal.");
+		defaults.put("divorce_success", "&ayou are now divorced.");
+		defaults.put("divorce_failed", "&ccould not complete divorce.");
 		return defaults;
 	}
 

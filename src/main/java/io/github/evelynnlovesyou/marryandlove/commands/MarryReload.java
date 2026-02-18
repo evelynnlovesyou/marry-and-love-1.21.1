@@ -14,14 +14,14 @@ import net.minecraft.network.chat.Component;
 public class MarryReload {
     public static int register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
-            Commands.literal("marryandlove")
+            Commands.literal("marryandlove") // /marryandlove
                 .requires(source -> {
                     if (!(source.getEntity() instanceof ServerPlayer player)) {
                         return true;
                     }
                     return PermissionManager.canUseReloadCommand(player);
                 })
-                .then(Commands.literal("reload")
+                .then(Commands.literal("reload") // /marryandlove reload
                     .executes(context -> {
                         context.getSource().sendSystemMessage(Component.literal("Reloading..."));
                         ConfigReader.init();

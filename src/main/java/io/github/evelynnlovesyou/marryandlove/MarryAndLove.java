@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import io.github.evelynnlovesyou.marryandlove.config.ConfigReader;
 import io.github.evelynnlovesyou.marryandlove.config.LangReader;
+import io.github.evelynnlovesyou.marryandlove.commands.MarryCommand;
 import io.github.evelynnlovesyou.marryandlove.manager.CommandRegisterManager;
 import io.github.evelynnlovesyou.marryandlove.manager.MarriageManager;
 import io.github.evelynnlovesyou.marryandlove.manager.PermissionManager;
@@ -44,6 +45,7 @@ public class MarryAndLove implements ModInitializer {
 			MarriageManager.ensureLoaded(handler.getPlayer());
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			MarryCommand.handleDisconnect(handler.getPlayer().getUUID());
 			MarriageManager.handleDisconnect(handler.getPlayer());
 		});
 	}
