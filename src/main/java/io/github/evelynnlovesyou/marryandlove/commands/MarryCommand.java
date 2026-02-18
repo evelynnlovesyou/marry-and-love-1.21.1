@@ -1,13 +1,14 @@
 package io.github.evelynnlovesyou.marryandlove.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 
 import io.github.evelynnlovesyou.marryandlove.config.LangReader;
 import io.github.evelynnlovesyou.marryandlove.manager.MarriageManager;
 import io.github.evelynnlovesyou.marryandlove.manager.PermissionManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -20,51 +21,30 @@ public class MarryCommand {
     // target -> proposers (most recent at the front)
     private static final Map<UUID, Deque<UUID>> PENDING_PROPOSALS = new HashMap<>();
 
-    public static int register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static int register(CommandDispatcher<CommandSourceStack> dispatcher) { //register command
         dispatcher.register(
-            Commands.literal("marry")
-                .then(Commands.argument("player", EntityArgument.player())
-                .then(Commands.literal("accept")
-                    .executes(context -> {
-                        ServerPlayer player = context.getSource().getPlayerOrException();
-
-                        if (!PermissionManager.canUseMarryCommand(player)) {
-                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_NO_PERMISSION));
-                            return 0;
-                        }
-
-                        MarriageManager.ProposalResult result = MarriageManager.getLatestProposal(player);
-                        if (result.getProposerId() == null) {
-                            String message = result.isExpired() ? LangReader.MARRY_PROPOSAL_EXPIRED : LangReader.MARRY_NO_PENDING_PROPOSAL;
-                            context.getSource().sendFailure(Component.literal(message));
-                            return 0;
-                        }
-
-                        UUID proposerId = result.getProposerId();
-                        ServerPlayer proposer = player.server.getPlayerList().getPlayer(proposerId);
-                        if (proposer == null || !canMarry(proposer)) {
-                            MarriageManager.clearProposal(player);
-                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_PROPOSAL_EXPIRED));
-                            return 0;
-                        }
-
-                        if (!MarriageManager.marry(proposer, player)) {
-                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_FAILED));
-                            return 0;
-                        }
-
-                        String proposerName = proposer.getName().getString();
-                        String playerName = player.getName().getString();
-
-                        context.getSource().sendSuccess(() -> Component.literal(String.format(LangReader.MARRY_SUCCESS_SENDER, proposerName)), false);
-                        proposer.sendSystemMessage(Component.literal(String.format(LangReader.MARRY_SUCCESS_TARGET, playerName)));
-                        return 1;
+            Commands.literal("marry") // /marry <player>
+                .requires(source -> {
+                    if (!(source.getEntity() instanceof ServerPlayer player)) {
+                        return false;
+                    }
+                    return PermissionManager.canUseMarryCommand(player);
+            })
+                .then(Commands.argument("player", StringArgumentType.word())
+                    .suggests((context, builder) -> {
+                        return SharedSuggestionProvider.suggest(
+                            context.getSource().getOnlinePlayerNames(), 
+                            builder
+                        );
                     })
-                )
-                    .executes(context -> {
+                .executes(context -> {
                         ServerPlayer player = context.getSource().getPlayerOrException();
-                        ServerPlayer target = EntityArgument.getPlayer(context, "player");
-
+                        String targetName = StringArgumentType.getString(context, "player");
+                        ServerPlayer target = context.getSource().getServer().getPlayerList().getPlayerByName(targetName);
+                        if (target == null) {
+                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_TARGET_OFFLINE));
+                            return 0;
+                        }
                         if (!PermissionManager.canUseMarryCommand(player)) {
                             context.getSource().sendFailure(Component.literal(LangReader.MARRY_NO_PERMISSION));
                             return 0;
@@ -91,18 +71,17 @@ public class MarryCommand {
                             return 0;
                         }
                         String playerName = player.getName().getString();
-                        String targetName = target.getName().getString();
 
                         context.getSource().sendSuccess(
-                            () -> Component.literal("Marriage proposal sent to " + targetName + "."),
+                            () -> Component.literal(String.format(LangReader.MARRY_PROPOSAL_SENT, target.getName().getString())),
                             false
                         );
                         target.sendSystemMessage(
-                            Component.literal(playerName + " proposed to you! Use /marry accept to accept.")
+                            Component.literal(String.format(LangReader.MARRY_PROPOSAL_RECEIVED, playerName))
                         );
                         return 1;
                     })
-                )
+                ) // /marry accept
                 .then(Commands.literal("accept")
                     .executes(context -> {
                         ServerPlayer accepter = context.getSource().getPlayerOrException();
@@ -114,13 +93,13 @@ public class MarryCommand {
 
                         UUID proposerUuid = popMostRecentProposal(accepter.getUUID());
                         if (proposerUuid == null) {
-                            context.getSource().sendFailure(Component.literal("You have no pending marriage proposals."));
+                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_NO_PENDING_PROPOSAL));
                             return 0;
                         }
 
                         ServerPlayer proposer = accepter.server.getPlayerList().getPlayer(proposerUuid);
                         if (proposer == null) {
-                            context.getSource().sendFailure(Component.literal("The player who proposed is offline."));
+                            context.getSource().sendFailure(Component.literal(LangReader.MARRY_PROPOSER_OFFLINE));
                             return 0;
                         }
 

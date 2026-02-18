@@ -27,6 +27,9 @@ public class LangReader {
 	public static String MARRY_PROPOSAL_RECEIVED;
 	public static String MARRY_NO_PENDING_PROPOSAL;
 	public static String MARRY_PROPOSAL_EXPIRED;
+	public static String MARRY_PROPOSER_OFFLINE;
+	public static String MARRY_TARGET_MUST_BE_SINGLE;
+	public static String MARRY_TARGET_OFFLINE;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Map<String, String> DEFAULT_MESSAGES = createDefaultMessages();
@@ -104,21 +107,27 @@ public class LangReader {
 		MARRY_PROPOSAL_RECEIVED = get("marry_proposal_received");
 		MARRY_NO_PENDING_PROPOSAL = get("marry_no_pending_proposal");
 		MARRY_PROPOSAL_EXPIRED = get("marry_proposal_expired");
+		MARRY_PROPOSER_OFFLINE = get("marry_proposer_offline");
+		MARRY_TARGET_MUST_BE_SINGLE = get("marry_target_must_be_single");
+		MARRY_TARGET_OFFLINE = get("marry_target_offline");
 	}
 
 	private static Map<String, String> createDefaultMessages() {
 		Map<String, String> defaults = new LinkedHashMap<>();
-		defaults.put("marry_no_permission", "You do not have permission to use this command.");
-		defaults.put("cannot_marry_self", "You cannot marry yourself.");
-		defaults.put("already_married_self", "You are already married.");
-		defaults.put("already_married_target", "That player is already married.");
-		defaults.put("marry_failed", "Could not complete marriage.");
-		defaults.put("marry_success_sender", "You are now married to %player%!");
-		defaults.put("marry_success_target", "%player% is now married to you!");
-		defaults.put("marry_proposal_sent", "You proposed to %player%.");
-		defaults.put("marry_proposal_received", "%player% has proposed to you. Use /marry accept to respond.");
-		defaults.put("marry_no_pending_proposal", "You do not have a pending proposal.");
-		defaults.put("marry_proposal_expired", "That proposal is no longer valid.");
+		defaults.put("marry_no_permission", "&cyou do not have permission to marry other players.");
+		defaults.put("cannot_marry_self", "&cyou cannot marry yourself.");
+		defaults.put("already_married_self", "&cyou are already married.");
+		defaults.put("already_married_target", "&cthat player is already married.");
+		defaults.put("marry_failed", "&ccould not complete marriage.");
+		defaults.put("marry_success_sender", "&ayou are now married to %player%!");
+		defaults.put("marry_success_target", "&a%player% is now married to you!");
+		defaults.put("marry_proposal_sent", "&ayou proposed to %player%.");
+		defaults.put("marry_proposal_received", "&a%player% has proposed to you. Use /marry accept to respond.");
+		defaults.put("marry_no_pending_proposal", "&cyou do not have a pending proposal.");
+		defaults.put("marry_proposal_expired", "&cthat proposal is no longer valid.");
+		defaults.put("marry_proposer_offline", "&cthe player who proposed is offline.");
+		defaults.put("marry_target_must_be_individual", "&cplease target exactly one player.");
+		defaults.put("marry_target_offline", "&cthat player is offline or unavailable.");
 		return defaults;
 	}
 
