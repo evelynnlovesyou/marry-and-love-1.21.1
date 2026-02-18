@@ -58,10 +58,7 @@ public class ConfigReader {
             loadedConfig = new ConfigData();
         }
 
-        if (loadedConfig.proposalTimeoutSeconds == -1) {
-            // -1 means never expires
-            loadedConfig.proposalTimeoutSeconds = -1;
-        } else if (loadedConfig.proposalTimeoutSeconds <= 0) {
+        if (loadedConfig.proposalTimeoutSeconds < -1) {
             loadedConfig.proposalTimeoutSeconds = DEFAULT_CONFIG.proposalTimeoutSeconds;
         }
 

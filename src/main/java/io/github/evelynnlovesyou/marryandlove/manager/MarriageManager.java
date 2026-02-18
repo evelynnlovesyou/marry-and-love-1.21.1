@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -38,6 +39,11 @@ public class MarriageManager {
     public static boolean canMarry(ServerPlayer player) {
         ensureLoaded(player);
         return !MARRIAGES.containsKey(player.getUUID());
+    }
+
+    public static UUID getSpouse(ServerPlayer player) {
+        ensureLoaded(player);
+        return MARRIAGES.get(player.getUUID());
     }
 
     public static boolean marry(ServerPlayer playerOne, ServerPlayer playerTwo) {
@@ -99,7 +105,8 @@ public class MarriageManager {
 
         long timeoutMs = Math.max(0L, (long) ConfigReader.PROPOSAL_TIMEOUT_SECONDS * 1000L);
         if (timeoutMs == 0L) {
-            return new ProposalResult(proposerId, false);
+            clearProposal(target);
+            return new ProposalResult(null, true);
         }
 
         long proposalTime = PROPOSAL_TIMESTAMPS.getOrDefault(targetId, 0L);
@@ -120,9 +127,36 @@ public class MarriageManager {
 
     public static void handleDisconnect(ServerPlayer player) {
         UUID playerId = player.getUUID();
-        LOADED_PLAYERS.remove(playerId);
-        PENDING_PROPOSALS.remove(playerId);
+
+        boolean removedIncoming = PENDING_PROPOSALS.remove(playerId) != null;
         PROPOSAL_TIMESTAMPS.remove(playerId);
+        if (removedIncoming) {
+            savePlayerData(player);
+        }
+
+        Set<UUID> affectedTargets = new HashSet<>();
+        Iterator<Map.Entry<UUID, UUID>> iterator = PENDING_PROPOSALS.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, UUID> entry = iterator.next();
+            if (!playerId.equals(entry.getValue())) {
+                continue;
+            }
+
+            affectedTargets.add(entry.getKey());
+            iterator.remove();
+        }
+
+        for (UUID targetId : affectedTargets) {
+            PROPOSAL_TIMESTAMPS.remove(targetId);
+            MinecraftServer server = player.server;
+            if (server == null) {
+                continue;
+            }
+
+            savePlayerData(server, targetId);
+        }
+
+        LOADED_PLAYERS.remove(playerId);
     }
 
     public static void ensureLoaded(ServerPlayer player) {
@@ -133,6 +167,23 @@ public class MarriageManager {
 
         loadPlayerData(player);
         LOADED_PLAYERS.add(playerId);
+    }
+
+    public static boolean divorce(ServerPlayer player) {
+        ensureLoaded(player);
+        UUID playerId = player.getUUID();
+        UUID spouseId = MARRIAGES.get(playerId);
+        if (spouseId == null) {
+            return false;
+        }
+
+        MARRIAGES.remove(playerId);
+        MARRIAGES.remove(spouseId);
+
+        MinecraftServer server = player.server;
+        savePlayerData(server, spouseId);
+        savePlayerData(server, playerId);
+        return true;
     }
 
     public static void loadPlayerData(ServerPlayer player) {
@@ -154,8 +205,7 @@ public class MarriageManager {
 
             if (!spouseValue.isEmpty()) {
                 UUID spouseId = UUID.fromString(spouseValue);
-                MARRIAGES.put(player.getUUID(), spouseId);
-                MARRIAGES.put(spouseId, player.getUUID());
+                registerLoadedMarriage(player.getUUID(), spouseId);
             }
 
             if (!proposalValue.isEmpty()) {
@@ -179,10 +229,34 @@ public class MarriageManager {
 
         long timeoutMs = Math.max(0L, (long) ConfigReader.PROPOSAL_TIMEOUT_SECONDS * 1000L);
         if (timeoutMs == 0L) {
-            return false;
+            return true;
         }
 
         return proposalTimestamp == 0L || System.currentTimeMillis() - proposalTimestamp > timeoutMs;
+    }
+
+    private static void registerLoadedMarriage(UUID playerId, UUID spouseId) {
+        if (playerId.equals(spouseId)) {
+            MarryAndLove.LOGGER.warn("Ignoring invalid self-marriage entry for {}", playerId);
+            return;
+        }
+
+        UUID existingForPlayer = MARRIAGES.get(playerId);
+        if (existingForPlayer != null && !existingForPlayer.equals(spouseId)) {
+            MarryAndLove.LOGGER.warn("Ignoring conflicting marriage entry for {} -> {} (already mapped to {})", playerId, spouseId, existingForPlayer);
+            return;
+        }
+
+        UUID existingForSpouse = MARRIAGES.get(spouseId);
+        if (existingForSpouse != null && !existingForSpouse.equals(playerId)) {
+            MarryAndLove.LOGGER.warn("Ignoring conflicting marriage entry for {} -> {} (spouse already mapped to {})", playerId, spouseId, existingForSpouse);
+            return;
+        }
+
+        MARRIAGES.put(playerId, spouseId);
+        if (playerId.equals(existingForSpouse)) {
+            MARRIAGES.put(spouseId, playerId);
+        }
     }
 
     private static void clearProposalInternal(ServerPlayer target) {
@@ -192,7 +266,11 @@ public class MarriageManager {
     }
 
     private static void savePlayerData(ServerPlayer player) {
-        Path filePath = getPlayerDataFile(player.server, player.getUUID());
+        savePlayerData(player.server, player.getUUID());
+    }
+
+    private static void savePlayerData(MinecraftServer server, UUID playerId) {
+        Path filePath = getPlayerDataFile(server, playerId);
         if (filePath == null) {
             return;
         }
@@ -202,9 +280,9 @@ public class MarriageManager {
             CompoundTag root = new CompoundTag();
             CompoundTag data = new CompoundTag();
 
-            UUID spouseId = MARRIAGES.get(player.getUUID());
-            UUID proposerId = PENDING_PROPOSALS.get(player.getUUID());
-            long proposalTimestamp = PROPOSAL_TIMESTAMPS.getOrDefault(player.getUUID(), 0L);
+            UUID spouseId = MARRIAGES.get(playerId);
+            UUID proposerId = PENDING_PROPOSALS.get(playerId);
+            long proposalTimestamp = PROPOSAL_TIMESTAMPS.getOrDefault(playerId, 0L);
 
             data.putString(NBT_SPOUSE_KEY, spouseId == null ? "" : spouseId.toString());
             data.putString(NBT_PROPOSAL_KEY, proposerId == null ? "" : proposerId.toString());
@@ -213,7 +291,7 @@ public class MarriageManager {
 
             NbtIo.writeCompressed(root, filePath);
         } catch (IOException exception) {
-            MarryAndLove.LOGGER.error("Failed to save marriage data for {}", player.getUUID(), exception);
+            MarryAndLove.LOGGER.error("Failed to save marriage data for {}", playerId, exception);
         }
     }
 

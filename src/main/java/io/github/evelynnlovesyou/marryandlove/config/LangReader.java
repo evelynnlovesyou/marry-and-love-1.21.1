@@ -34,6 +34,8 @@ public class LangReader {
 	public static String MARRY_DENY_TARGET;
 	public static String DIVORCE_SUCCESS;
 	public static String DIVORCE_FAILED;
+	public static String MARRIAGE_STATUS_BADGE;
+	public static String MARRIAGE_STATUS_HOVER;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Map<String, String> DEFAULT_MESSAGES = createDefaultMessages();
@@ -118,6 +120,8 @@ public class LangReader {
 		MARRY_DENY_TARGET = get("marry_deny_target");
 		DIVORCE_SUCCESS = get("divorce_success");
 		DIVORCE_FAILED = get("divorce_failed");
+		MARRIAGE_STATUS_BADGE = get("marriage_status_badge");
+		MARRIAGE_STATUS_HOVER = get("marriage_status_hover");
 	}
 
 	private static Map<String, String> createDefaultMessages() {
@@ -140,6 +144,8 @@ public class LangReader {
 		defaults.put("marry_deny_target", "&a%player% has denied your marriage proposal.");
 		defaults.put("divorce_success", "&ayou are now divorced.");
 		defaults.put("divorce_failed", "&ccould not complete divorce.");
+		defaults.put("marriage_status_badge", "[<3]");
+		defaults.put("marriage_status_hover", "Married to: %player%");
 		return defaults;
 	}
 
