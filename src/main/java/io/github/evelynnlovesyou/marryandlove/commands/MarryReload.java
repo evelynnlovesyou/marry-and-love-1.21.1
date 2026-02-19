@@ -5,12 +5,10 @@ import com.mojang.brigadier.CommandDispatcher;
 import io.github.evelynnlovesyou.marryandlove.config.ConfigReader;
 import io.github.evelynnlovesyou.marryandlove.config.LangReader;
 import io.github.evelynnlovesyou.marryandlove.manager.PermissionManager;
+import io.github.evelynnlovesyou.marryandlove.utils.MessageFormatter;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.chat.Component;
-
-
 public class MarryReload {
     public static int register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(
@@ -23,11 +21,12 @@ public class MarryReload {
                 })
                 .then(Commands.literal("reload") // /marryandlove reload
                     .executes(context -> {
-                        context.getSource().sendSystemMessage(Component.literal("Reloading..."));
+                        var registryAccess = context.getSource().registryAccess();
+                        context.getSource().sendSystemMessage(MessageFormatter.format("&eReloading...", registryAccess));
                         ConfigReader.init();
                         LangReader.init();
                         context.getSource().sendSuccess(
-                            () -> Component.literal("Reloaded"), 
+                            () -> MessageFormatter.format("&aReloaded", registryAccess), 
                             false
                         );
                         return 1;

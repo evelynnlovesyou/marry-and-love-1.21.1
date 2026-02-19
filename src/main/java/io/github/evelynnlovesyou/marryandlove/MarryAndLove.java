@@ -48,7 +48,7 @@ public class MarryAndLove implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> MarriageManager.init());
 		
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-			MarriageManager.ensureLoaded(handler.getPlayer());
+			MarriageManager.handleJoin(handler.getPlayer());
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			MarriageManager.handleDisconnect(handler.getPlayer());

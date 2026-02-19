@@ -6,6 +6,7 @@ import eu.pb4.placeholders.api.PlaceholderResult;
 import eu.pb4.placeholders.api.Placeholders;
 import com.mojang.authlib.GameProfile;
 import io.github.evelynnlovesyou.marryandlove.config.LangReader;
+import io.github.evelynnlovesyou.marryandlove.utils.MessageFormatter;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
@@ -18,16 +19,17 @@ import io.github.evelynnlovesyou.marryandlove.MarryAndLove;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 public class PlaceholderManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(MarryAndLove.MOD_ID);
-    public static final ResourceLocation MARRIAGE_STATUS = ResourceLocation.fromNamespaceAndPath("marryandlove", "marriage_status");
+    public static final ResourceLocation MARRIAGE_STATUS = ResourceLocation.fromNamespaceAndPath("marryandlove", "marriage_status"); // placeholder identifier: %marryandlove:marriage_status%
 
     public static void init()
     {
         if (initPlaceholderApi() == 0) {
             LOGGER.info("Placeholder API detected, registering placeholders...");
         } else {
-            LOGGER.warn("Placeholder API not detected, skipping placeholder registration.");
             return;
         }
         Placeholders.register(MARRIAGE_STATUS, PlaceholderManager::provideMarriageStatus);
@@ -61,10 +63,10 @@ public class PlaceholderManager {
 
         String spouseName = getSpouseName(player, spouseId, spouse);
 
-        MutableComponent displayText = createMarriageBadgeComponent()
+        MutableComponent displayText = createMarriageBadgeComponent(player)
             .withStyle(style -> style.withHoverEvent(new HoverEvent(
                         HoverEvent.Action.SHOW_TEXT,
-                        Component.literal(formatPlayerMessage(LangReader.MARRIAGE_STATUS_HOVER, spouseName))
+                MessageFormatter.format(LangReader.MARRIAGE_STATUS_HOVER, Map.of("player", spouseName), player.registryAccess())
                 )));
 
         return PlaceholderResult.value(displayText);
@@ -85,11 +87,7 @@ public class PlaceholderManager {
         return "Unknown";
     }
 
-    private static MutableComponent createMarriageBadgeComponent() {
-        return Component.literal(LangReader.MARRIAGE_STATUS_BADGE);
-    }
-
-    private static String formatPlayerMessage(String template, String playerName) {
-        return template.replace("%player%", playerName);
+    private static MutableComponent createMarriageBadgeComponent(ServerPlayer player) {
+        return MessageFormatter.format(LangReader.MARRIAGE_STATUS_BADGE, player.registryAccess()).copy();
     }
 }

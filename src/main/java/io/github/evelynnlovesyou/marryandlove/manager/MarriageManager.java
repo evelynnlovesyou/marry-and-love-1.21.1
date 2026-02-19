@@ -7,11 +7,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import com.mojang.authlib.GameProfile;
 import io.github.evelynnlovesyou.marryandlove.MarryAndLove;
 import io.github.evelynnlovesyou.marryandlove.config.ConfigReader;
+import io.github.evelynnlovesyou.marryandlove.config.LangReader;
+import io.github.evelynnlovesyou.marryandlove.utils.MessageFormatter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
@@ -22,18 +26,26 @@ import net.minecraft.world.level.storage.LevelResource;
 public class MarriageManager {
     private static final Map<UUID, UUID> MARRIAGES = new HashMap<>();
     private static final Map<UUID, UUID> PENDING_PROPOSALS = new HashMap<>();
+    private static final Map<UUID, UUID> PENDING_DIVORCE_NOTIFICATIONS = new HashMap<>();
     private static final Map<UUID, Long> PROPOSAL_TIMESTAMPS = new HashMap<>();
     private static final Set<UUID> LOADED_PLAYERS = new HashSet<>();
     private static final String NBT_ROOT_KEY = "marryandlove";
     private static final String NBT_SPOUSE_KEY = "spouse";
     private static final String NBT_PROPOSAL_KEY = "proposal";
     private static final String NBT_PROPOSAL_TIMESTAMP_KEY = "proposalTimestamp";
+    private static final String NBT_PENDING_DIVORCE_NOTIFIER_KEY = "pendingDivorceNotifier";
 
     public static void init(){
         MARRIAGES.clear();
         PENDING_PROPOSALS.clear();
+        PENDING_DIVORCE_NOTIFICATIONS.clear();
         PROPOSAL_TIMESTAMPS.clear();
         LOADED_PLAYERS.clear();
+    }
+
+    public static void handleJoin(ServerPlayer player) {
+        ensureLoaded(player);
+        deliverPendingDivorceNotification(player);
     }
 
     public static boolean canMarry(ServerPlayer player) {
@@ -111,6 +123,7 @@ public class MarriageManager {
 
         long proposalTime = PROPOSAL_TIMESTAMPS.getOrDefault(targetId, 0L);
         if (proposalTime == 0L || System.currentTimeMillis() - proposalTime > timeoutMs) {
+            notifyProposalExpired(target, proposerId);
             clearProposal(target);
             return new ProposalResult(null, true);
         }
@@ -123,6 +136,15 @@ public class MarriageManager {
         PENDING_PROPOSALS.remove(target.getUUID());
         PROPOSAL_TIMESTAMPS.remove(target.getUUID());
         savePlayerData(target);
+    }
+
+    public static void queueDivorceNotification(MinecraftServer server, UUID targetId, UUID divorcerId) {
+        if (server == null || targetId == null || divorcerId == null) {
+            return;
+        }
+
+        PENDING_DIVORCE_NOTIFICATIONS.put(targetId, divorcerId);
+        savePlayerData(server, targetId);
     }
 
     public static void handleDisconnect(ServerPlayer player) {
@@ -201,6 +223,7 @@ public class MarriageManager {
             CompoundTag data = root.getCompound(NBT_ROOT_KEY);
             String spouseValue = data.getString(NBT_SPOUSE_KEY);
             String proposalValue = data.getString(NBT_PROPOSAL_KEY);
+            String pendingDivorceNotifierValue = data.getString(NBT_PENDING_DIVORCE_NOTIFIER_KEY);
             long proposalTimestamp = data.getLong(NBT_PROPOSAL_TIMESTAMP_KEY);
 
             if (!spouseValue.isEmpty()) {
@@ -217,9 +240,69 @@ public class MarriageManager {
                     PROPOSAL_TIMESTAMPS.put(player.getUUID(), proposalTimestamp);
                 }
             }
+
+            if (!pendingDivorceNotifierValue.isEmpty()) {
+                UUID divorcerId = UUID.fromString(pendingDivorceNotifierValue);
+                PENDING_DIVORCE_NOTIFICATIONS.put(player.getUUID(), divorcerId);
+            }
         } catch (IOException | IllegalArgumentException exception) {
             MarryAndLove.LOGGER.error("Failed to read marriage data for {}", player.getUUID(), exception);
         }
+    }
+
+    private static void deliverPendingDivorceNotification(ServerPlayer player) {
+        UUID playerId = player.getUUID();
+        UUID divorcerId = PENDING_DIVORCE_NOTIFICATIONS.remove(playerId);
+        if (divorcerId == null) {
+            return;
+        }
+
+        String divorcerName = getPlayerName(player.server, divorcerId);
+        player.sendSystemMessage(
+            MessageFormatter.format(
+                LangReader.DIVORCE_SPOUSE_NOTIFIED,
+                Map.of("player", divorcerName),
+                player.registryAccess()
+            )
+        );
+        savePlayerData(player);
+    }
+
+    private static void notifyProposalExpired(ServerPlayer target, UUID proposerId) {
+        if (target.server == null || proposerId == null) {
+            return;
+        }
+
+        ServerPlayer proposer = target.server.getPlayerList().getPlayer(proposerId);
+        if (proposer == null) {
+            return;
+        }
+
+        proposer.sendSystemMessage(
+            MessageFormatter.format(
+                LangReader.MARRY_SENT_PROPOSAL_EXPIRED,
+                Map.of("player", target.getName().getString()),
+                proposer.registryAccess()
+            )
+        );
+    }
+
+    private static String getPlayerName(MinecraftServer server, UUID playerId) {
+        if (server == null || playerId == null) {
+            return "Unknown";
+        }
+
+        ServerPlayer onlinePlayer = server.getPlayerList().getPlayer(playerId);
+        if (onlinePlayer != null) {
+            return onlinePlayer.getName().getString();
+        }
+
+        Optional<GameProfile> cachedProfile = server.getProfileCache().get(playerId);
+        if (cachedProfile.isPresent()) {
+            return cachedProfile.get().getName();
+        }
+
+        return "Unknown";
     }
 
     private static boolean isProposalExpired(long proposalTimestamp) {
@@ -282,11 +365,13 @@ public class MarriageManager {
 
             UUID spouseId = MARRIAGES.get(playerId);
             UUID proposerId = PENDING_PROPOSALS.get(playerId);
+            UUID pendingDivorceNotifierId = PENDING_DIVORCE_NOTIFICATIONS.get(playerId);
             long proposalTimestamp = PROPOSAL_TIMESTAMPS.getOrDefault(playerId, 0L);
 
             data.putString(NBT_SPOUSE_KEY, spouseId == null ? "" : spouseId.toString());
             data.putString(NBT_PROPOSAL_KEY, proposerId == null ? "" : proposerId.toString());
             data.putLong(NBT_PROPOSAL_TIMESTAMP_KEY, proposerId == null ? 0L : proposalTimestamp);
+            data.putString(NBT_PENDING_DIVORCE_NOTIFIER_KEY, pendingDivorceNotifierId == null ? "" : pendingDivorceNotifierId.toString());
             root.put(NBT_ROOT_KEY, data);
 
             NbtIo.writeCompressed(root, filePath);
