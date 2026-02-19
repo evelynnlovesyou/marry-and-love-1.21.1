@@ -3,9 +3,8 @@ package io.github.evelynnlovesyou.marryandlove.manager;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -24,11 +23,15 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
 
 public class MarriageManager {
-    private static final Map<UUID, UUID> MARRIAGES = new HashMap<>();
-    private static final Map<UUID, UUID> PENDING_PROPOSALS = new HashMap<>();
-    private static final Map<UUID, UUID> PENDING_DIVORCE_NOTIFICATIONS = new HashMap<>();
-    private static final Map<UUID, Long> PROPOSAL_TIMESTAMPS = new HashMap<>();
-    private static final Set<UUID> LOADED_PLAYERS = new HashSet<>();
+    private static final Map<UUID, UUID> MARRIAGES = new ConcurrentHashMap<>();
+    private static final Map<UUID, UUID> PENDING_PROPOSALS = new ConcurrentHashMap<>();
+    private static final Map<UUID, UUID> PENDING_DIVORCE_NOTIFICATIONS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> PROPOSAL_TIMESTAMPS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Set<UUID>> PROPOSALS_BY_PROPOSER = new ConcurrentHashMap<>();
+    private static final Set<UUID> LOADED_PLAYERS = new CopyOnWriteArraySet<>();
+    private static final Object SAVE_LOCK = new Object();
+    private static long lastProposalCheckTick = 0;
+    private static long cachedTimeoutMs = -1;
     private static final String NBT_ROOT_KEY = "marryandlove";
     private static final String NBT_SPOUSE_KEY = "spouse";
     private static final String NBT_PROPOSAL_KEY = "proposal";
@@ -40,7 +43,14 @@ public class MarriageManager {
         PENDING_PROPOSALS.clear();
         PENDING_DIVORCE_NOTIFICATIONS.clear();
         PROPOSAL_TIMESTAMPS.clear();
+        PROPOSALS_BY_PROPOSER.clear();
         LOADED_PLAYERS.clear();
+        lastProposalCheckTick = 0;
+        cachedTimeoutMs = -1;
+    }
+
+    public static void invalidateTimeoutCache() {
+        cachedTimeoutMs = -1;
     }
 
     public static void handleJoin(ServerPlayer player) {
@@ -78,6 +88,8 @@ public class MarriageManager {
         PENDING_PROPOSALS.remove(playerTwoId);
         PROPOSAL_TIMESTAMPS.remove(playerOneId);
         PROPOSAL_TIMESTAMPS.remove(playerTwoId);
+        PROPOSALS_BY_PROPOSER.remove(playerOneId);
+        PROPOSALS_BY_PROPOSER.remove(playerTwoId);
         savePlayerData(playerOne);
         savePlayerData(playerTwo);
         return true;
@@ -97,10 +109,28 @@ public class MarriageManager {
             return false;
         }
 
+        // Anti-spam: Check if proposer already has a pending proposal (incoming or outgoing)
+        if (PENDING_PROPOSALS.containsKey(proposerId) || PENDING_PROPOSALS.containsValue(proposerId)) {
+            return false;
+        }
+
+        // Anti-spam: Check if target already has a pending proposal (incoming or outgoing)
+        if (PENDING_PROPOSALS.containsKey(targetId) || PENDING_PROPOSALS.containsValue(targetId)) {
+            return false;
+        }
+
         PENDING_PROPOSALS.put(targetId, proposerId);
         PROPOSAL_TIMESTAMPS.put(targetId, System.currentTimeMillis());
+        PROPOSALS_BY_PROPOSER.computeIfAbsent(proposerId, k -> ConcurrentHashMap.newKeySet()).add(targetId);
         savePlayerData(target);
         return true;
+    }
+
+    public static boolean hasProposal(ServerPlayer player) {
+        ensureLoaded(player);
+        UUID playerId = player.getUUID();
+        // Check if player has incoming proposal or is already proposing to someone
+        return PENDING_PROPOSALS.containsKey(playerId) || PENDING_PROPOSALS.containsValue(playerId);
     }
 
     public static ProposalResult getLatestProposal(ServerPlayer target) {
@@ -133,8 +163,15 @@ public class MarriageManager {
 
     public static void clearProposal(ServerPlayer target) {
         ensureLoaded(target);
-        PENDING_PROPOSALS.remove(target.getUUID());
-        PROPOSAL_TIMESTAMPS.remove(target.getUUID());
+        UUID targetId = target.getUUID();
+        UUID proposerId = PENDING_PROPOSALS.remove(targetId);
+        PROPOSAL_TIMESTAMPS.remove(targetId);
+        if (proposerId != null) {
+            PROPOSALS_BY_PROPOSER.computeIfPresent(proposerId, (k, targets) -> {
+                targets.remove(targetId);
+                return targets.isEmpty() ? null : targets;
+            });
+        }
         savePlayerData(target);
     }
 
@@ -156,26 +193,17 @@ public class MarriageManager {
             savePlayerData(player);
         }
 
-        Set<UUID> affectedTargets = new HashSet<>();
-        Iterator<Map.Entry<UUID, UUID>> iterator = PENDING_PROPOSALS.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<UUID, UUID> entry = iterator.next();
-            if (!playerId.equals(entry.getValue())) {
-                continue;
+        // Use reverse index for O(1) lookup instead of O(n) scan
+        Set<UUID> affectedTargets = PROPOSALS_BY_PROPOSER.remove(playerId);
+        if (affectedTargets != null) {
+            for (UUID targetId : affectedTargets) {
+                PENDING_PROPOSALS.remove(targetId);
+                PROPOSAL_TIMESTAMPS.remove(targetId);
+                MinecraftServer server = player.server;
+                if (server != null) {
+                    savePlayerData(server, targetId);
+                }
             }
-
-            affectedTargets.add(entry.getKey());
-            iterator.remove();
-        }
-
-        for (UUID targetId : affectedTargets) {
-            PROPOSAL_TIMESTAMPS.remove(targetId);
-            MinecraftServer server = player.server;
-            if (server == null) {
-                continue;
-            }
-
-            savePlayerData(server, targetId);
         }
 
         LOADED_PLAYERS.remove(playerId);
@@ -227,25 +255,38 @@ public class MarriageManager {
             long proposalTimestamp = data.getLong(NBT_PROPOSAL_TIMESTAMP_KEY);
 
             if (!spouseValue.isEmpty()) {
-                UUID spouseId = UUID.fromString(spouseValue);
-                registerLoadedMarriage(player.getUUID(), spouseId);
+                try {
+                    UUID spouseId = UUID.fromString(spouseValue);
+                    registerLoadedMarriage(player.getUUID(), spouseId);
+                } catch (IllegalArgumentException e) {
+                    MarryAndLove.LOGGER.warn("Corrupted spouse UUID for player {}: {}", player.getUUID(), spouseValue);
+                }
             }
 
             if (!proposalValue.isEmpty()) {
-                UUID proposerId = UUID.fromString(proposalValue);
-                if (isProposalExpired(proposalTimestamp)) {
-                    clearProposalInternal(player);
-                } else {
-                    PENDING_PROPOSALS.put(player.getUUID(), proposerId);
-                    PROPOSAL_TIMESTAMPS.put(player.getUUID(), proposalTimestamp);
+                try {
+                    UUID proposerId = UUID.fromString(proposalValue);
+                    if (isProposalExpired(proposalTimestamp)) {
+                        clearProposalInternal(player);
+                    } else {
+                        PENDING_PROPOSALS.put(player.getUUID(), proposerId);
+                        PROPOSAL_TIMESTAMPS.put(player.getUUID(), proposalTimestamp);
+                        PROPOSALS_BY_PROPOSER.computeIfAbsent(proposerId, k -> ConcurrentHashMap.newKeySet()).add(player.getUUID());
+                    }
+                } catch (IllegalArgumentException e) {
+                    MarryAndLove.LOGGER.warn("Corrupted proposal UUID for player {}: {}", player.getUUID(), proposalValue);
                 }
             }
 
             if (!pendingDivorceNotifierValue.isEmpty()) {
-                UUID divorcerId = UUID.fromString(pendingDivorceNotifierValue);
-                PENDING_DIVORCE_NOTIFICATIONS.put(player.getUUID(), divorcerId);
+                try {
+                    UUID divorcerId = UUID.fromString(pendingDivorceNotifierValue);
+                    PENDING_DIVORCE_NOTIFICATIONS.put(player.getUUID(), divorcerId);
+                } catch (IllegalArgumentException e) {
+                    MarryAndLove.LOGGER.warn("Corrupted divorce notifier UUID for player {}: {}", player.getUUID(), pendingDivorceNotifierValue);
+                }
             }
-        } catch (IOException | IllegalArgumentException exception) {
+        } catch (IOException exception) {
             MarryAndLove.LOGGER.error("Failed to read marriage data for {}", player.getUUID(), exception);
         }
     }
@@ -349,8 +390,15 @@ public class MarriageManager {
     }
 
     private static void clearProposalInternal(ServerPlayer target) {
-        PENDING_PROPOSALS.remove(target.getUUID());
-        PROPOSAL_TIMESTAMPS.remove(target.getUUID());
+        UUID targetId = target.getUUID();
+        UUID proposerId = PENDING_PROPOSALS.remove(targetId);
+        PROPOSAL_TIMESTAMPS.remove(targetId);
+        if (proposerId != null) {
+            PROPOSALS_BY_PROPOSER.computeIfPresent(proposerId, (k, targets) -> {
+                targets.remove(targetId);
+                return targets.isEmpty() ? null : targets;
+            });
+        }
         savePlayerData(target);
     }
 
@@ -364,25 +412,27 @@ public class MarriageManager {
             return;
         }
 
-        try {
-            Files.createDirectories(filePath.getParent());
-            CompoundTag root = new CompoundTag();
-            CompoundTag data = new CompoundTag();
+        synchronized (SAVE_LOCK) {
+            try {
+                Files.createDirectories(filePath.getParent());
+                CompoundTag root = new CompoundTag();
+                CompoundTag data = new CompoundTag();
 
-            UUID spouseId = MARRIAGES.get(playerId);
-            UUID proposerId = PENDING_PROPOSALS.get(playerId);
-            UUID pendingDivorceNotifierId = PENDING_DIVORCE_NOTIFICATIONS.get(playerId);
-            long proposalTimestamp = PROPOSAL_TIMESTAMPS.getOrDefault(playerId, 0L);
+                UUID spouseId = MARRIAGES.get(playerId);
+                UUID proposerId = PENDING_PROPOSALS.get(playerId);
+                UUID pendingDivorceNotifierId = PENDING_DIVORCE_NOTIFICATIONS.get(playerId);
+                long proposalTimestamp = PROPOSAL_TIMESTAMPS.getOrDefault(playerId, 0L);
 
-            data.putString(NBT_SPOUSE_KEY, spouseId == null ? "" : spouseId.toString());
-            data.putString(NBT_PROPOSAL_KEY, proposerId == null ? "" : proposerId.toString());
-            data.putLong(NBT_PROPOSAL_TIMESTAMP_KEY, proposerId == null ? 0L : proposalTimestamp);
-            data.putString(NBT_PENDING_DIVORCE_NOTIFIER_KEY, pendingDivorceNotifierId == null ? "" : pendingDivorceNotifierId.toString());
-            root.put(NBT_ROOT_KEY, data);
+                data.putString(NBT_SPOUSE_KEY, spouseId == null ? "" : spouseId.toString());
+                data.putString(NBT_PROPOSAL_KEY, proposerId == null ? "" : proposerId.toString());
+                data.putLong(NBT_PROPOSAL_TIMESTAMP_KEY, proposerId == null ? 0L : proposalTimestamp);
+                data.putString(NBT_PENDING_DIVORCE_NOTIFIER_KEY, pendingDivorceNotifierId == null ? "" : pendingDivorceNotifierId.toString());
+                root.put(NBT_ROOT_KEY, data);
 
-            NbtIo.writeCompressed(root, filePath);
-        } catch (IOException exception) {
-            MarryAndLove.LOGGER.error("Failed to save marriage data for {}", playerId, exception);
+                NbtIo.writeCompressed(root, filePath);
+            } catch (IOException exception) {
+                MarryAndLove.LOGGER.error("Failed to save marriage data for {}", playerId, exception);
+            }
         }
     }
 
@@ -393,6 +443,55 @@ public class MarriageManager {
 
         Path playerDataDir = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).resolve("marryandlove");
         return playerDataDir.resolve(playerId.toString() + ".dat");
+    }
+
+    public static void checkExpiredProposals(MinecraftServer server) {
+        // Throttle: only check every 100 ticks (5 seconds) instead of every tick
+        long currentTick = server.getTickCount();
+        if (currentTick - lastProposalCheckTick < 100) {
+            return;
+        }
+        lastProposalCheckTick = currentTick;
+
+        if (server == null || ConfigReader.PROPOSAL_TIMEOUT_SECONDS < 0 || PROPOSAL_TIMESTAMPS.isEmpty()) {
+            return;
+        }
+
+        // Cache timeout calculation
+        if (cachedTimeoutMs < 0) {
+            cachedTimeoutMs = Math.max(0L, (long) ConfigReader.PROPOSAL_TIMEOUT_SECONDS * 1000L);
+        }
+        long timeoutMs = cachedTimeoutMs;
+        if (timeoutMs == 0L) {
+            return;
+        }
+
+        long currentTime = System.currentTimeMillis();
+
+        // Collect expired proposals in a single pass
+        PROPOSAL_TIMESTAMPS.entrySet().removeIf(entry -> {
+            UUID targetId = entry.getKey();
+            long proposalTime = entry.getValue();
+
+            if (currentTime - proposalTime > timeoutMs) {
+                UUID proposerId = PENDING_PROPOSALS.remove(targetId);
+                if (proposerId != null) {
+                    ServerPlayer target = server.getPlayerList().getPlayer(targetId);
+                    if (target != null) {
+                        notifyProposalExpired(target, proposerId);
+                    }
+                    // Clean up reverse index
+                    PROPOSALS_BY_PROPOSER.computeIfPresent(proposerId, (k, targets) -> {
+                        targets.remove(targetId);
+                        return targets.isEmpty() ? null : targets;
+                    });
+                    // Save cleared data
+                    savePlayerData(server, targetId);
+                }
+                return true;  // Remove from PROPOSAL_TIMESTAMPS
+            }
+            return false;
+        });
     }
 
     public static class ProposalResult {

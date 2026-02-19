@@ -3,6 +3,7 @@ package io.github.evelynnlovesyou.marryandlove;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -15,6 +16,7 @@ import io.github.evelynnlovesyou.marryandlove.manager.CommandRegisterManager;
 import io.github.evelynnlovesyou.marryandlove.manager.MarriageManager;
 import io.github.evelynnlovesyou.marryandlove.manager.PermissionManager;
 import io.github.evelynnlovesyou.marryandlove.manager.PlaceholderManager;
+import io.github.evelynnlovesyou.marryandlove.utils.MessageFormatter;
 
 public class MarryAndLove implements ModInitializer {
 	public static final String MOD_ID = "marry-and-love";
@@ -44,6 +46,7 @@ public class MarryAndLove implements ModInitializer {
 			MarriageManager.init();
 			PermissionManager.init();
 			PlaceholderManager.init();
+			MessageFormatter.init();
 		});
 		ServerLifecycleEvents.SERVER_STOPPED.register(server -> MarriageManager.init());
 		
@@ -52,6 +55,10 @@ public class MarryAndLove implements ModInitializer {
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			MarriageManager.handleDisconnect(handler.getPlayer());
+		});
+		
+		ServerTickEvents.END_SERVER_TICK.register(server -> {
+			MarriageManager.checkExpiredProposals(server);
 		});
 	}
 }

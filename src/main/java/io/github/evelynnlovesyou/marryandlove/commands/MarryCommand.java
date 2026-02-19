@@ -60,6 +60,18 @@ public class MarryCommand {
                             return 0;
                         }
 
+                        // Anti-spam: Check if proposer already has a pending proposal
+                        if (MarriageManager.hasProposal(player)) {
+                            context.getSource().sendFailure(MessageFormatter.format(LangReader.MARRY_PROPOSER_PENDING, registryAccess));
+                            return 0;
+                        }
+
+                        // Anti-spam: Check if target already has a pending proposal
+                        if (MarriageManager.hasProposal(target)) {
+                            context.getSource().sendFailure(MessageFormatter.format(LangReader.MARRY_TARGET_PENDING, registryAccess));
+                            return 0;
+                        }
+
                         if (!MarriageManager.propose(player, target)) {
                             context.getSource().sendFailure(MessageFormatter.format(LangReader.MARRY_FAILED, registryAccess));
                             return 0;
@@ -90,7 +102,7 @@ public class MarryCommand {
                         UUID proposerUuid = proposalResult.getProposerId();
                         if (proposerUuid == null) {
                             context.getSource().sendFailure(MessageFormatter.format(
-                                proposalResult.isExpired() ? LangReader.MARRY_RECEIVED_PROPOSAL_EXPIRED : LangReader.MARRY_NO_PENDING_PROPOSAL,
+                                proposalResult.isExpired() ? LangReader.MARRY_PROPOSAL_EXPIRED : LangReader.MARRY_NO_PENDING_PROPOSAL,
                                 registryAccess
                             ));
                             return 0;

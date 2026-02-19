@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 
 import io.github.evelynnlovesyou.marryandlove.config.ConfigReader;
 import io.github.evelynnlovesyou.marryandlove.config.LangReader;
+import io.github.evelynnlovesyou.marryandlove.manager.MarriageManager;
 import io.github.evelynnlovesyou.marryandlove.manager.PermissionManager;
 import io.github.evelynnlovesyou.marryandlove.utils.MessageFormatter;
 import net.minecraft.commands.CommandSourceStack;
@@ -25,6 +26,7 @@ public class MarryReload {
                         context.getSource().sendSystemMessage(MessageFormatter.format("&eReloading...", registryAccess));
                         ConfigReader.init();
                         LangReader.init();
+                        MarriageManager.invalidateTimeoutCache();
                         context.getSource().sendSuccess(
                             () -> MessageFormatter.format("&aReloaded", registryAccess), 
                             false

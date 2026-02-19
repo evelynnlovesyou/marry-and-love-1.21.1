@@ -39,6 +39,8 @@ public class LangReader {
 	public static String DIVORCE_FAILED;
 	public static String MARRIAGE_STATUS_BADGE;
 	public static String MARRIAGE_STATUS_HOVER;
+	public static String MARRY_PROPOSER_PENDING;
+	public static String MARRY_TARGET_PENDING;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Map<String, String> DEFAULT_MESSAGES = createDefaultMessages();
@@ -128,6 +130,8 @@ public class LangReader {
 		DIVORCE_FAILED = get("divorce_failed");
 		MARRIAGE_STATUS_BADGE = get("marriage_status_badge");
 		MARRIAGE_STATUS_HOVER = get("marriage_status_hover");
+		MARRY_PROPOSER_PENDING = get("marry_proposer_pending");
+		MARRY_TARGET_PENDING = get("marry_target_pending");
 	}
 
 	private static Map<String, String> createDefaultMessages() {
@@ -144,7 +148,7 @@ public class LangReader {
 		defaults.put("marry_no_pending_proposal", "<red>you do not have a pending proposal.</red>");
 		defaults.put("marry_proposal_expired", "<red>that proposal is no longer valid.</red>");
 		defaults.put("marry_received_proposal_expired", "<red><gold>%player%</gold>'s proposal to you has expired.</red>");
-		defaults.put("marry_sent_proposal_expired", "<red>>your proposal to <gold>%player%</gold> has expired.</red>");
+		defaults.put("marry_sent_proposal_expired", "<red>your proposal to <gold>%player%</gold> has expired.</red>");
 		defaults.put("marry_proposer_offline", "<red>the player who proposed is offline.</red>");
 		defaults.put("marry_target_must_be_individual", "<red>please target exactly one player.</red>");
 		defaults.put("marry_target_offline", "<red>that player is offline or unavailable.</red>");
@@ -155,6 +159,8 @@ public class LangReader {
 		defaults.put("divorce_failed", "<red>could not complete divorce.</red>");
 		defaults.put("marriage_status_badge", "<bold><black>[<red>❤</red>]</black></bold>");
 		defaults.put("marriage_status_hover", "<aqua><!italic>Married to: %player%</!italic></aqua>");
+		defaults.put("marry_proposer_pending", "<red>you already have a pending proposal. wait for it to expire or deny it first.</red>");
+		defaults.put("marry_target_pending", "<red>that player already has a pending proposal and cannot receive another.</red>");
 		return defaults;
 	}
 
