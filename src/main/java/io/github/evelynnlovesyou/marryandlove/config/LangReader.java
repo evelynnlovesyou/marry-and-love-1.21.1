@@ -27,9 +27,20 @@ public class LangReader {
 	public static String MARRY_PROPOSAL_RECEIVED;
 	public static String MARRY_NO_PENDING_PROPOSAL;
 	public static String MARRY_PROPOSAL_EXPIRED;
+	public static String MARRY_RECEIVED_PROPOSAL_EXPIRED;
+	public static String MARRY_SENT_PROPOSAL_EXPIRED;
 	public static String MARRY_PROPOSER_OFFLINE;
-	public static String MARRY_TARGET_MUST_BE_SINGLE;
+	public static String MARRY_TARGET_MUST_BE_INDIVIDUAL;
 	public static String MARRY_TARGET_OFFLINE;
+	public static String MARRY_DENY_SUCCESS;
+	public static String MARRY_DENY_TARGET;
+	public static String DIVORCE_SUCCESS;
+	public static String DIVORCE_SPOUSE_NOTIFIED;
+	public static String DIVORCE_FAILED;
+	public static String MARRIAGE_STATUS_BADGE;
+	public static String MARRIAGE_STATUS_HOVER;
+	public static String MARRY_PROPOSER_PENDING;
+	public static String MARRY_TARGET_PENDING;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Map<String, String> DEFAULT_MESSAGES = createDefaultMessages();
@@ -107,27 +118,49 @@ public class LangReader {
 		MARRY_PROPOSAL_RECEIVED = get("marry_proposal_received");
 		MARRY_NO_PENDING_PROPOSAL = get("marry_no_pending_proposal");
 		MARRY_PROPOSAL_EXPIRED = get("marry_proposal_expired");
+		MARRY_RECEIVED_PROPOSAL_EXPIRED = get("marry_received_proposal_expired");
+		MARRY_SENT_PROPOSAL_EXPIRED = get("marry_sent_proposal_expired");
 		MARRY_PROPOSER_OFFLINE = get("marry_proposer_offline");
-		MARRY_TARGET_MUST_BE_SINGLE = get("marry_target_must_be_single");
+		MARRY_TARGET_MUST_BE_INDIVIDUAL = get("marry_target_must_be_individual");
 		MARRY_TARGET_OFFLINE = get("marry_target_offline");
+		MARRY_DENY_SUCCESS = get("marry_deny_success");
+		MARRY_DENY_TARGET = get("marry_deny_target");
+		DIVORCE_SUCCESS = get("divorce_success");
+		DIVORCE_SPOUSE_NOTIFIED = get("divorce_spouse_notified");
+		DIVORCE_FAILED = get("divorce_failed");
+		MARRIAGE_STATUS_BADGE = get("marriage_status_badge");
+		MARRIAGE_STATUS_HOVER = get("marriage_status_hover");
+		MARRY_PROPOSER_PENDING = get("marry_proposer_pending");
+		MARRY_TARGET_PENDING = get("marry_target_pending");
 	}
 
 	private static Map<String, String> createDefaultMessages() {
 		Map<String, String> defaults = new LinkedHashMap<>();
-		defaults.put("marry_no_permission", "&cyou do not have permission to marry other players.");
-		defaults.put("cannot_marry_self", "&cyou cannot marry yourself.");
-		defaults.put("already_married_self", "&cyou are already married.");
-		defaults.put("already_married_target", "&cthat player is already married.");
-		defaults.put("marry_failed", "&ccould not complete marriage.");
-		defaults.put("marry_success_sender", "&ayou are now married to %player%!");
-		defaults.put("marry_success_target", "&a%player% is now married to you!");
-		defaults.put("marry_proposal_sent", "&ayou proposed to %player%.");
-		defaults.put("marry_proposal_received", "&a%player% has proposed to you. Use /marry accept to respond.");
-		defaults.put("marry_no_pending_proposal", "&cyou do not have a pending proposal.");
-		defaults.put("marry_proposal_expired", "&cthat proposal is no longer valid.");
-		defaults.put("marry_proposer_offline", "&cthe player who proposed is offline.");
-		defaults.put("marry_target_must_be_individual", "&cplease target exactly one player.");
-		defaults.put("marry_target_offline", "&cthat player is offline or unavailable.");
+		defaults.put("marry_no_permission", "<red>you do not have permission to marry other players.</red>");
+		defaults.put("cannot_marry_self", "<red>you cannot marry yourself.</red>");
+		defaults.put("already_married_self", "<red>you are already married.</red>");
+		defaults.put("already_married_target", "<red>that player is already married.</red>");
+		defaults.put("marry_failed", "<red>could not complete marriage.</red>");
+		defaults.put("marry_success_sender", "<green>you are now married to <gold>%player%</gold>!</green>");
+		defaults.put("marry_success_target", "<green><gold>%player%</gold> is now married to you!</green>");
+		defaults.put("marry_proposal_sent", "<green>you proposed to <gold>%player%</gold>.</green>");
+		defaults.put("marry_proposal_received", "<gold>%player%</gold><green> has proposed to you!<newline></green><click:run_command:'/marry accept'><hover:show_text:'<yellow>Accept proposal</yellow>'><bold><dark_green>[ACCEPT]</dark_green></bold></hover></click> <click:run_command:'/marry deny'><hover:show_text:'<yellow>Deny proposal</yellow>'><bold><red>[DENY]</red></bold></hover></click>");
+		defaults.put("marry_no_pending_proposal", "<red>you do not have a pending proposal.</red>");
+		defaults.put("marry_proposal_expired", "<red>that proposal is no longer valid.</red>");
+		defaults.put("marry_received_proposal_expired", "<red><gold>%player%</gold>'s proposal to you has expired.</red>");
+		defaults.put("marry_sent_proposal_expired", "<red>your proposal to <gold>%player%</gold> has expired.</red>");
+		defaults.put("marry_proposer_offline", "<red>the player who proposed is offline.</red>");
+		defaults.put("marry_target_must_be_individual", "<red>please target exactly one player.</red>");
+		defaults.put("marry_target_offline", "<red>that player is offline or unavailable.</red>");
+		defaults.put("marry_deny_success", "<green>you have denied the marriage proposal.</green>");
+		defaults.put("marry_deny_target", "<green>%player% has denied your marriage proposal.</green>");
+		defaults.put("divorce_success", "<green>you are now divorced.</green>");
+		defaults.put("divorce_spouse_notified", "<red><gold>%player%</gold> has divorced you.</red>");
+		defaults.put("divorce_failed", "<red>could not complete divorce.</red>");
+		defaults.put("marriage_status_badge", "<bold><black>[<red>❤</red>]</black></bold>");
+		defaults.put("marriage_status_hover", "<aqua><!italic>Married to: %player%</!italic></aqua>");
+		defaults.put("marry_proposer_pending", "<red>you already have a pending proposal. wait for it to expire or deny it first.</red>");
+		defaults.put("marry_target_pending", "<red>that player already has a pending proposal and cannot receive another.</red>");
 		return defaults;
 	}
 
