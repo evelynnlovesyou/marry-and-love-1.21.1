@@ -274,15 +274,21 @@ public class MarriageManager {
         }
 
         ServerPlayer proposer = target.server.getPlayerList().getPlayer(proposerId);
-        if (proposer == null) {
-            return;
+        if (proposer != null) {
+            proposer.sendSystemMessage(
+                MessageFormatter.format(
+                    LangReader.MARRY_SENT_PROPOSAL_EXPIRED,
+                    Map.of("player", target.getName().getString()),
+                    proposer.registryAccess()
+                )
+            );
         }
 
-        proposer.sendSystemMessage(
+        target.sendSystemMessage(
             MessageFormatter.format(
-                LangReader.MARRY_SENT_PROPOSAL_EXPIRED,
-                Map.of("player", target.getName().getString()),
-                proposer.registryAccess()
+                LangReader.MARRY_RECEIVED_PROPOSAL_EXPIRED,
+                Map.of("player", getPlayerName(target.server, proposerId)),
+                target.registryAccess()
             )
         );
     }

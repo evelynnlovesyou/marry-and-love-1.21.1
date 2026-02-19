@@ -90,7 +90,7 @@ public class MarryCommand {
                         UUID proposerUuid = proposalResult.getProposerId();
                         if (proposerUuid == null) {
                             context.getSource().sendFailure(MessageFormatter.format(
-                                proposalResult.isExpired() ? LangReader.MARRY_PROPOSAL_EXPIRED : LangReader.MARRY_NO_PENDING_PROPOSAL,
+                                proposalResult.isExpired() ? LangReader.MARRY_RECEIVED_PROPOSAL_EXPIRED : LangReader.MARRY_NO_PENDING_PROPOSAL,
                                 registryAccess
                             ));
                             return 0;
@@ -144,7 +144,7 @@ public class MarryCommand {
                         UUID proposerUuid = proposalResult.getProposerId();
                         if (proposerUuid == null) {
                             context.getSource().sendFailure(MessageFormatter.format(
-                                proposalResult.isExpired() ? LangReader.MARRY_PROPOSAL_EXPIRED : LangReader.MARRY_NO_PENDING_PROPOSAL,
+                                proposalResult.isExpired() ? LangReader.MARRY_RECEIVED_PROPOSAL_EXPIRED : LangReader.MARRY_NO_PENDING_PROPOSAL,
                                 registryAccess
                             ));
                             return 0;
