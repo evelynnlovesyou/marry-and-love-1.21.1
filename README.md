@@ -1,7 +1,7 @@
 # marry-and-love-1.21.1
 
 **Commands**
-> /marry <Player>
+> /marry {Player}
 
 Proposes to another player, uses the luckperm node marryandlove.command.marry
 
