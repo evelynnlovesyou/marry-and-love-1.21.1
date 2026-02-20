@@ -19,7 +19,7 @@ Divorces the player from their partner, uses the luckperm node marryandlove.comm
 
 > /marryandlove reload
 
-Reloads config, lang file and permissions, user the luckperm node marryandlove.command.reload
+Reloads config, lang file and permissions, uses the luckperm node marryandlove.command.reload
 
 **Placeholder**
 Has a Text Placeholder API placeholder - %marryandlove:marriage_status% that can be used for any purpose, it displays the partner of the player by default.
