@@ -22,9 +22,11 @@ Divorces the player from their partner, uses the luckperm node marryandlove.comm
 Reloads config, lang file and permissions, uses the luckperm node marryandlove.command.reload
 
 **Placeholder**
+
 Has a Text Placeholder API placeholder - %marryandlove:marriage_status% that can be used for any purpose, it displays the partner of the player by default.
 
 **Config and lang**
+
 Has a lang.json file that enables messages sent by the mod to be configured 
 Lang includes %player% placeholders that are replaced by playernames
 Lang uses minimessage format
