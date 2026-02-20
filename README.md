@@ -5,16 +5,16 @@
 Proposes to another player, uses the luckperm node marryandlove.command.marry
 
 > /marry accept
-> Accepts the most recent proposal that the player has, uses the luckperm node marryandlove.command.marry
+Accepts the most recent proposal that the player has, uses the luckperm node marryandlove.command.marry
 
 > /marry deny
-> Declines the most recent proposal that the player has, uses the luckperm node marryandlove.command.marry
+Declines the most recent proposal that the player has, uses the luckperm node marryandlove.command.marry
 
 > /marry divorce
-> Divorces the player from their partner, uses the luckperm node marryandlove.command.marry
+Divorces the player from their partner, uses the luckperm node marryandlove.command.marry
 
 > /marryandlove reload
-> Reloads config, lang file and permissions, user the luckperm node marryandlove.command.reload
+Reloads config, lang file and permissions, user the luckperm node marryandlove.command.reload
 
 **Placeholder**
 Has a Text Placeholder API placeholder - %marryandlove:marriage_status% that can be used for any purpose, it displays the partner of the player by default.
