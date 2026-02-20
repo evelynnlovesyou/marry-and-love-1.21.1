@@ -28,4 +28,5 @@ Has a Text Placeholder API placeholder - %marryandlove:marriage_status% that can
 Has a lang.json file that enables messages sent by the mod to be configured 
 Lang includes %player% placeholders that are replaced by playernames
 Lang uses minimessage format
+
 Has a config.json file that allows various numbers to be edited.
