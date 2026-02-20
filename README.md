@@ -2,18 +2,23 @@
 
 **Commands**
 > /marry <Player>
+
 Proposes to another player, uses the luckperm node marryandlove.command.marry
 
 > /marry accept
+
 Accepts the most recent proposal that the player has, uses the luckperm node marryandlove.command.marry
 
 > /marry deny
+
 Declines the most recent proposal that the player has, uses the luckperm node marryandlove.command.marry
 
 > /marry divorce
+
 Divorces the player from their partner, uses the luckperm node marryandlove.command.marry
 
 > /marryandlove reload
+
 Reloads config, lang file and permissions, user the luckperm node marryandlove.command.reload
 
 **Placeholder**
